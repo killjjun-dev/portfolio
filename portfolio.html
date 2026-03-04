@@ -426,7 +426,7 @@
     <h1>📊 내 자산 포트폴리오</h1>
     <p>계좌별 · 종목별 · 섹터별 통합 현황</p>
   </div>
-  <div class="date-badge">📅 2026.03.03 종가 기준</div>
+  <div class="date-badge" id="dateBadge">📅 2026.03.03 종가 기준</div>
 </div>
 
 <!-- SUMMARY -->
@@ -442,10 +442,7 @@
   <div class="sc" style="border-top:2px solid var(--green)"><div class="lbl">💸 월 대출 이자</div><div class="val" style="color:var(--green)">130만원</div><div class="sub">투자수익률 7% vs 금리 4.4%</div></div>
 </div>
 
-<!-- NOTE -->
-<div class="note-card fade d2">
-  ⚠️ <strong>2026.03.03 코스피 대폭락</strong> — 미·이란 충격으로 코스피 약 -6% 급락. <strong>삼성전자 -9.88%, SK하이닉스 -11.5%</strong> 반영. 일부 소형주·ETF는 추정 종가 사용 — 참고용으로만 활용해주세요.
-</div>
+
 
 <!-- PRICE EDIT BUTTON -->
 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px" class="fade d3">
@@ -1888,6 +1885,10 @@ renderTypeBar();
         style="padding:9px 16px;font-size:.76rem;font-weight:600;cursor:pointer;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);margin-bottom:-1px">
         🔗 구글 시트
       </button>
+      <button id="pe-tab-div" onclick="peTab('div')"
+        style="padding:9px 16px;font-size:.76rem;font-weight:600;cursor:pointer;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);margin-bottom:-1px">
+        💸 배당
+      </button>
     </div>
 
     <!-- 현재가 탭 -->
@@ -1965,6 +1966,33 @@ renderTypeBar();
       </div>
       <div class="editor-footer">
         <button class="btn-cancel" onclick="closeEditor()">닫기</button>
+      </div>
+    </div>
+
+    <!-- 배당 탭 -->
+    <div id="pe-panel-div" style="display:none">
+      <!-- 배당 자동 조회 박스 -->
+      <div style="background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+        <div style="font-size:.73rem;font-weight:700;color:#fbbf24;margin-bottom:8px">📡 배당금 자동 조회 (Claude 웹서치)</div>
+        <div style="font-size:.68rem;color:var(--muted);margin-bottom:10px;line-height:1.6">
+          보유 종목의 최신 배당금 · 지급 주기를 AI가 검색해서 업데이트해요.<br>
+          <span style="color:#fbbf24">→ 조회 후 수동으로 수정도 가능해요</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button id="divFetchBtn" onclick="startDivFetch()"
+            style="background:#f59e0b;border:none;color:#000;font-weight:700;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:.73rem;font-family:'Malgun Gothic','맑은 고딕',sans-serif">
+            🔄 배당금 불러오기
+          </button>
+        </div>
+        <div id="divFetchStatus" style="font-size:.68rem;color:var(--muted);margin-top:8px">배당 없는 종목 제외 · 약 15~25초 소요</div>
+      </div>
+
+      <!-- 배당 목록 -->
+      <div id="divMgmtBody" style="max-height:380px;overflow-y:auto"></div>
+
+      <div class="editor-footer">
+        <button class="btn-cancel" onclick="closeEditor()">닫기</button>
+        <button class="btn-apply" onclick="applyDivChanges()" style="background:#f59e0b;color:#000">💾 배당 저장</button>
       </div>
     </div>
   </div>
@@ -2592,7 +2620,7 @@ function openEditor() {
   const today = new Date();
   const yyyymmdd = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
   const di = document.getElementById('fetchDateInput');
-  if(di && !di.value) di.value = yyyymmdd;
+  if(di) di.value = yyyymmdd;  // 열 때마다 오늘 날짜로 초기화
   document.getElementById('priceEditor').classList.add('open');
   updateGsheetBadge();
   peTab('price'); // 항상 현재가 탭으로 시작
@@ -2661,13 +2689,15 @@ function closeEditor() {
 
 // ── 탭 전환 ────────────────────────────────────────────────────────────────
 function peTab(tab) {
-  ['price','stocks','gsheet'].forEach(t => {
+  const TAB_COLORS = { price:'#3b82f6', stocks:'#a78bfa', gsheet:'#22c55e', div:'#f59e0b' };
+  const TAB_TEXT   = { price:'#60a5fa', stocks:'#c4b5fd', gsheet:'#4ade80', div:'#fbbf24' };
+  ['price','stocks','gsheet','div'].forEach(t => {
     const btn   = document.getElementById('pe-tab-' + t);
     const panel = document.getElementById('pe-panel-' + t);
     const active = t === tab;
     if(btn) {
-      btn.style.borderBottomColor = active ? (t==='price'?'#3b82f6':t==='stocks'?'#a78bfa':'#22c55e') : 'transparent';
-      btn.style.color = active ? (t==='price'?'#60a5fa':t==='stocks'?'#c4b5fd':'#4ade80') : 'var(--muted)';
+      btn.style.borderBottomColor = active ? TAB_COLORS[t] : 'transparent';
+      btn.style.color = active ? TAB_TEXT[t] : 'var(--muted)';
       btn.style.fontWeight = active ? '700' : '600';
     }
     if(panel) panel.style.display = active ? '' : 'none';
@@ -2677,6 +2707,7 @@ function peTab(tab) {
     const inp = document.getElementById('gsheetUrlInput');
     if(inp) inp.value = GSHEET_API_URL;
   }
+  if(tab === 'div') buildDivMgmt();
 }
 
 // ── 구글 시트 URL 관리 ────────────────────────────────────────────────────
@@ -2729,6 +2760,163 @@ async function testGsheetUrl() {
 function updateGsheetBadge() {
   const badge = document.getElementById('gsheetBadge');
   if(badge) badge.style.display = GSHEET_API_URL ? 'inline' : 'none';
+}
+
+
+// ── 배당 관리 탭 ──────────────────────────────────────────────────────────
+const FREQ_OPTIONS = ['-', '월배당', '분기', '반기', '연간'];
+const MONTHS_OPTIONS = {
+  '-':    [],
+  '월배당': [1,2,3,4,5,6,7,8,9,10,11,12],
+  '분기':  [[1,4,7,10],[2,5,8,11],[3,6,9,12]],
+  '반기':  [[1,7],[2,8],[3,9],[4,10],[5,11],[6,12]],
+  '연간':  [1,2,3,4,5,6,7,8,9,10,11,12],
+};
+
+function buildDivMgmt() {
+  const container = document.getElementById('divMgmtBody');
+  if(!container) return;
+
+  // 보유 종목 기준으로 배당 데이터 표시
+  const names = [...new Set(rawHoldings.filter(h=>!h.fund).map(h=>h.name))];
+
+  let h = '';
+  names.forEach(name => {
+    const d = DIVDATA[name] || { perShare:0, freq:'-', months:[], note:'' };
+    const freqOpts = FREQ_OPTIONS.map(f =>
+      `<option value="${f}" ${d.freq===f?'selected':''}>${f}</option>`
+    ).join('');
+
+    h += `<div style="border-bottom:1px solid rgba(255,255,255,.06);padding:10px 2px">
+      <div style="font-size:.73rem;font-weight:700;color:var(--text);margin-bottom:6px">${name}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;align-items:center">
+        <div>
+          <div style="font-size:.62rem;color:var(--muted);margin-bottom:3px">주당 배당금 (원)</div>
+          <input type="number" id="dv_amt_${name.replace(/\s/g,'_')}"
+            value="${d.perShare}"
+            style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text);font-size:.73rem"
+          />
+        </div>
+        <div>
+          <div style="font-size:.62rem;color:var(--muted);margin-bottom:3px">지급 주기</div>
+          <select id="dv_freq_${name.replace(/\s/g,'_')}"
+            onchange="dvFreqChange('${name.replace(/\s/g,'_')}')"
+            style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--border);border-radius:5px;padding:5px 6px;color:var(--text);font-size:.73rem">
+            ${freqOpts}
+          </select>
+        </div>
+        <div>
+          <div style="font-size:.62rem;color:var(--muted);margin-bottom:3px">지급 월</div>
+          <input type="text" id="dv_months_${name.replace(/\s/g,'_')}"
+            value="${d.months.join(',')}"
+            placeholder="예: 4 또는 4,10"
+            style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text);font-size:.73rem"
+          />
+        </div>
+      </div>
+      ${d.note ? `<div style="font-size:.6rem;color:var(--muted);margin-top:4px">📝 ${d.note}</div>` : ''}
+    </div>`;
+  });
+
+  container.innerHTML = h || '<div style="color:var(--muted);font-size:.75rem;padding:20px;text-align:center">보유 종목이 없어요</div>';
+}
+
+function dvFreqChange(key) {
+  const freq = document.getElementById('dv_freq_' + key)?.value;
+  const monthsEl = document.getElementById('dv_months_' + key);
+  if(!monthsEl) return;
+  // 주기 변경 시 지급월 자동 추천
+  if(freq === '월배당') monthsEl.value = '1,2,3,4,5,6,7,8,9,10,11,12';
+  else if(freq === '-') monthsEl.value = '';
+}
+
+function applyDivChanges() {
+  const names = [...new Set(rawHoldings.filter(h=>!h.fund).map(h=>h.name))];
+  let changed = 0;
+  names.forEach(name => {
+    const key = name.replace(/\s/g,'_');
+    const amtEl   = document.getElementById('dv_amt_'   + key);
+    const freqEl  = document.getElementById('dv_freq_'  + key);
+    const monthsEl= document.getElementById('dv_months_'+ key);
+    if(!amtEl) return;
+    const perShare = parseInt(amtEl.value) || 0;
+    const freq     = freqEl?.value || '-';
+    const months   = monthsEl?.value
+      ? monthsEl.value.split(',').map(m=>parseInt(m.trim())).filter(m=>m>0&&m<=12)
+      : [];
+    DIVDATA[name] = { ...( DIVDATA[name]||{} ), perShare, freq, months, note: DIVDATA[name]?.note || '' };
+    changed++;
+  });
+  // 배당 뷰 즉시 갱신
+  if(typeof renderDividend === 'function') renderDividend();
+  alert(`✅ ${changed}개 종목 배당 정보 저장 완료`);
+  buildDivMgmt();
+}
+
+// ── 배당금 Claude API 자동 조회 ──────────────────────────────────────────
+async function startDivFetch() {
+  const btn    = document.getElementById('divFetchBtn');
+  const status = document.getElementById('divFetchStatus');
+  btn.disabled = true;
+  btn.textContent = '⏳ 조회 중...';
+  status.style.color = '#fbbf24';
+  status.textContent = 'Claude가 보유 종목 배당금 웹서치 중... (약 15~25초)';
+
+  const names = [...new Set(rawHoldings.filter(h=>!h.fund).map(h=>h.name))];
+  const nameList = names.join(', ');
+
+  const prompt = `다음 한국 주식/ETF 종목들의 최신 주당 배당금(분배금)과 지급 주기를 웹서치로 찾아줘.
+배당 없는 종목은 perShare를 0으로.
+반드시 JSON만 응답해. 코드블록이나 설명 절대 포함하지 마.
+
+종목: ${nameList}
+
+응답 형식:
+{"dividends":{"삼성전자":{"perShare":365,"freq":"분기","months":[5,8,11]},"TIGER 미국배당다우존스":{"perShare":55,"freq":"월배당","months":[1,2,3,4,5,6,7,8,9,10,11,12]}}}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        system: '주식 배당금 데이터 추출 도구입니다. 웹서치로 찾아 JSON만 응답합니다.',
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if(!res.ok) throw new Error('API HTTP ' + res.status);
+    const data = await res.json();
+    const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    if(!text) throw new Error('응답 없음');
+
+    const clean = text.replace(/```json|```/g,'').trim();
+    const s = clean.indexOf('{'), e = clean.lastIndexOf('}');
+    const parsed = JSON.parse(clean.slice(s, e+1));
+
+    let updated = 0;
+    Object.entries(parsed.dividends||{}).forEach(([name, obj]) => {
+      if(!DIVDATA[name]) DIVDATA[name] = {};
+      DIVDATA[name].perShare = obj.perShare ?? 0;
+      DIVDATA[name].freq     = obj.freq || '-';
+      DIVDATA[name].months   = obj.months || [];
+      DIVDATA[name].note     = (DIVDATA[name].note||'') + ' (AI조회)';
+      updated++;
+    });
+
+    status.style.color = '#4ade80';
+    status.textContent = `✅ ${updated}개 종목 배당 정보 조회 완료 · 확인 후 저장하세요`;
+    buildDivMgmt();
+
+  } catch(e) {
+    status.style.color = 'var(--red)';
+    status.textContent = '❌ 조회 실패: ' + e.message;
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🔄 배당금 불러오기';
 }
 
 // ── 종목 관리 탭 ──────────────────────────────────────────────────────────
@@ -2962,6 +3150,10 @@ function applyPrices() {
   lastUpdated = dateStr;
   document.getElementById('price-updated-label').innerHTML =
     `✅ 현재가 업데이트 완료 · <span style="font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:var(--gold)">${lastUpdated}</span> · ${updatedCount}개 종목 반영`;
+
+  // 날짜 뱃지 업데이트
+  const badge = document.getElementById('dateBadge');
+  if(badge) badge.textContent = '📅 ' + lastUpdated.slice(0,10).replace(/-/g,'.') + ' 종가 기준';
 
   closeEditor();
   renderView();
