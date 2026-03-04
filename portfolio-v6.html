@@ -2623,6 +2623,39 @@ function applyPrices() {
   renderDonut();
   renderTypeBar();
 }
+/* ===============================
+   구글시트 종가 자동 업데이트 모듈
+   =============================== */
+
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTxLofY6vBMIU_kcxAlbOIs9Boc5knX-SSQ_aadHrZtVZ-PuPRwGFuv7V9TOi1K0zoRLimECDq9D-rf/pub?gid=0&single=true&output=csv";
+
+async function loadCloseFromSheet(){
+  try{
+    const res = await fetch(SHEET_URL);
+    const text = await res.text();
+
+    const rows = text.trim().split("\n").slice(1);
+
+    rows.forEach(row=>{
+      const cols = row.split(",");
+      const name  = cols[0]?.trim();
+      const close = parseFloat(cols[3]);
+
+      if(name && !isNaN(close)){
+        savedPrices[name] = close;
+      }
+    });
+
+    if(typeof recomputeAll === "function"){
+      recomputeAll();
+    }
+
+    alert("✅ 구글시트 종가 업데이트 완료");
+  }catch(e){
+    console.error(e);
+    alert("❌ 구글시트 불러오기 실패");
+  }
+}  
 </script>
 
 
