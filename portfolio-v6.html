@@ -1885,6 +1885,7 @@ renderTypeBar();
         <button id="fetchBtn" onclick="startAutoFetch()"
           style="background:#3b82f6;border:none;color:#fff;font-weight:700;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:.73rem;font-family:'Malgun Gothic','맑은 고딕',sans-serif;white-space:nowrap;flex-shrink:0">
           🔄 종가 불러오기
+          <button onclick="loadCloseFromSheet()">📥 구글 종가 업데이트</button>
         </button>
       </div>
       <div id="fetchStatus" style="font-size:.68rem;color:var(--muted);margin-top:7px">네이버 증권 공개 API · CORS 프록시 경유 · 약 20~40초 소요 · 펀드 3종 제외</div>
