@@ -1885,7 +1885,6 @@ renderTypeBar();
         <button id="fetchBtn" onclick="startAutoFetch()"
           style="background:#3b82f6;border:none;color:#fff;font-weight:700;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:.73rem;font-family:'Malgun Gothic','맑은 고딕',sans-serif;white-space:nowrap;flex-shrink:0">
           🔄 종가 불러오기
-          <button onclick="loadCloseFromSheet()">📥 구글 종가 업데이트</button>
         </button>
       </div>
       <div id="fetchStatus" style="font-size:.68rem;color:var(--muted);margin-top:7px">네이버 증권 공개 API · CORS 프록시 경유 · 약 20~40초 소요 · 펀드 3종 제외</div>
@@ -2846,6 +2845,53 @@ async function loadCloseFromSheet(){
     </div>
   </div>
 </div>
+<script>
+/* ===============================
+   구글시트 종가 자동 업데이트
+   =============================== */
 
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTxLofY6vBMIU_kcxAlbOIs9Boc5knX-SSQ_aadHrZtVZ-PuPRwGFuv7V9TOi1K0zoRLimECDq9D-rf/pub?gid=0&single=true&output=csv";
+
+async function loadCloseFromSheet(){
+  try{
+    const res = await fetch(SHEET_URL);
+    const text = await res.text();
+    const rows = text.trim().split("\n").slice(1);
+
+    rows.forEach(row=>{
+      const cols = row.split(",");
+      const name  = cols[0]?.trim();
+      const close = parseFloat(cols[3]);
+
+      if(name && !isNaN(close)){
+        if(typeof savedPrices !== "undefined"){
+          savedPrices[name] = close;
+        }
+      }
+    });
+
+    if(typeof recomputeAll === "function"){
+      recomputeAll();
+    }else if(typeof recomputeRows === "function"){
+      recomputeRows();
+    }
+
+    alert("구글 종가 업데이트 완료");
+  }catch(e){
+    console.error(e);
+    alert("구글시트 불러오기 실패");
+  }
+}
+
+/* 화면 상단에 버튼 자동 생성 (위치 찾을 필요 없음) */
+window.addEventListener("load", function(){
+  const btn = document.createElement("button");
+  btn.innerText = "📥 구글 종가 업데이트";
+  btn.style.marginLeft = "10px";
+  btn.onclick = loadCloseFromSheet;
+
+  document.body.insertBefore(btn, document.body.firstChild);
+});
+</script>
 </body>
 </html>
